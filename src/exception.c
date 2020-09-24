@@ -32,7 +32,7 @@ void raise_exception(uint32_t type, const char *msg)
 			e->type = type;
 			e->msg = msg;
 			innermost_exception = e->outer;
-			longjmp(e->jmpbuf, type);
+			__builtin_longjmp(e->jmpbuf, 1);
 		}
 	}
 	abort();

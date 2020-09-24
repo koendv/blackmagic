@@ -25,6 +25,7 @@
 #include "general.h"
 #include "jtagtap.h"
 #include "gdb_packet.h"
+#include "gpio.h"
 
 jtag_proc_t jtag_proc;
 
@@ -57,12 +58,18 @@ int jtagtap_init()
 static void jtagtap_reset(void)
 {
 #ifdef TRST_PORT
+#if defined(MICROPYTHON)
+		gpio_clear(TRST_PORT, TRST_PIN);
+		platform_delay(100);
+		gpio_set(TRST_PORT, TRST_PIN);
+#else
 	if (platform_hwversion() == 0) {
 		volatile int i;
 		gpio_clear(TRST_PORT, TRST_PIN);
 		for(i = 0; i < 10000; i++) asm("nop");
 		gpio_set(TRST_PORT, TRST_PIN);
 	}
+#endif
 #endif
 	jtagtap_soft_reset();
 }

@@ -22,6 +22,7 @@
 
 #include "general.h"
 #include "swdptap.h"
+#include "gpio.h"
 
 enum {
 	SWDIO_STATUS_FLOAT = 0,

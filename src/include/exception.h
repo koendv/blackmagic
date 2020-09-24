@@ -42,7 +42,6 @@
 #ifndef __EXCEPTION_H
 #define __EXCEPTION_H
 
-#include <setjmp.h>
 #include <stdint.h>
 
 #define EXCEPTION_ERROR   0x01
@@ -54,7 +53,7 @@ struct exception {
 	const char *msg;
 	/* private */
 	uint32_t mask;
-	jmp_buf jmpbuf;
+	intptr_t jmpbuf[5];
 	struct exception *outer;
 };
 
@@ -65,7 +64,7 @@ extern struct exception *innermost_exception;
 	(e).mask = (type_mask); \
 	(e).outer = innermost_exception; \
 	innermost_exception = (void*)&(e); \
-	if (setjmp(innermost_exception->jmpbuf) == 0) \
+	if (__builtin_setjmp(innermost_exception->jmpbuf) == 0) \
 		for (;innermost_exception == &(e); innermost_exception = (e).outer)
 
 void raise_exception(uint32_t type, const char *msg);

@@ -51,11 +51,16 @@ enum BMP_DEBUG {
 #if PC_HOSTED == 0
 /* For BMP debug output on a firmware BMP platform, using
  * BMP PC-Hosted is the preferred way. Printing DEBUG_WARN
- * and DEBUG_INFO is kept for comptibiluty.
+ * and DEBUG_INFO is kept for compatibility.
  */
 # if defined(ENABLE_DEBUG)
+# ifdef MICROPYTHON
+#  define DEBUG_WARN(...) debug_printf(__VA_ARGS__)
+#  define DEBUG_INFO(...) debug_printf(__VA_ARGS__)
+# else
 #  define DEBUG_WARN printf
 #  define DEBUG_INFO printf
+# endif
 # else
 #  define DEBUG_WARN(...)
 #  define DEBUG_INFO(...)

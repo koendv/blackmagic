@@ -87,9 +87,13 @@ static target_addr cortexm_check_watch(target *t);
 #define CORTEXM_MAX_WATCHPOINTS	4	/* architecture says up to 15, no implementation has > 4 */
 #define CORTEXM_MAX_BREAKPOINTS	6	/* architecture says up to 127, no implementation has > 6 */
 
+#ifdef MICROPYTHON
+int cortexm_hostio_request(target *t);
+#else
 static int cortexm_hostio_request(target *t);
 
 static uint32_t time0_sec = UINT32_MAX; /* sys_clock time origin */
+#endif
 
 struct cortexm_priv {
 	ADIv5_AP_t *ap;
@@ -1062,6 +1066,7 @@ static bool cortexm_vector_catch(target *t, int argc, char *argv[])
 #	undef SYS_OPEN
 #endif
 
+#ifndef MICROPYTHON
 /* Semihosting support */
 
 /*
@@ -1607,3 +1612,5 @@ static int cortexm_hostio_request(target *t)
 
 	return t->tc->interrupted;
 }
+
+#endif

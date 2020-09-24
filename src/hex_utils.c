@@ -40,7 +40,7 @@ char * hexify(char *hex, const void *buf, size_t size)
 	return hex;
 }
 
-static uint8_t unhex_digit(char hex)
+uint8_t unhex_digit(char hex)
 {
 	uint8_t tmp = hex - '0';
 	if(tmp > 9)

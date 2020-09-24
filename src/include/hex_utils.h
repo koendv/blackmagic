@@ -22,6 +22,7 @@
 #define __HEX_UTILS_H
 
 char * hexify(char *hex, const void *buf, size_t size);
+uint8_t unhex_digit(char hex);
 char * unhexify(void *buf, const char *hex, size_t size);
 
 #endif

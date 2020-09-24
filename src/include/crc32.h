@@ -21,6 +21,7 @@
 #ifndef __CRC32_H
 #define __CRC32_H
 
-uint32_t generic_crc32(target *t, uint32_t base, int len);
+void generic_crc32_init(void);
+uint32_t generic_crc32(target *t, uint32_t base, size_t len);
 
 #endif

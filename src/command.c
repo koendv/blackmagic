@@ -29,11 +29,6 @@
 #include "target.h"
 #include "morse.h"
 #include "version.h"
-#include "serialno.h"
-
-#ifdef PLATFORM_HAS_TRACESWO
-#	include "traceswo.h"
-#endif
 
 typedef bool (*cmd_handler)(target *t, int argc, const char **argv);
 
@@ -57,9 +52,6 @@ static bool cmd_hard_srst(target *t, int argc, const char **argv);
 #ifdef PLATFORM_HAS_POWER_SWITCH
 static bool cmd_target_power(target *t, int argc, const char **argv);
 #endif
-#ifdef PLATFORM_HAS_TRACESWO
-static bool cmd_traceswo(target *t, int argc, const char **argv);
-#endif
 static bool cmd_heapinfo(target *t, int argc, const char **argv);
 #if defined(PLATFORM_HAS_DEBUG) && (PC_HOSTED == 0)
 static bool cmd_debug_bmp(target *t, int argc, const char **argv);
@@ -77,13 +69,6 @@ const struct command_s cmd_list[] = {
 	{"hard_srst", (cmd_handler)cmd_hard_srst, "Force a pulse on the hard SRST line - disconnects target" },
 #ifdef PLATFORM_HAS_POWER_SWITCH
 	{"tpwr", (cmd_handler)cmd_target_power, "Supplies power to the target: (enable|disable)"},
-#endif
-#ifdef PLATFORM_HAS_TRACESWO
-#if defined TRACESWO_PROTOCOL && TRACESWO_PROTOCOL == 2
-	{"traceswo", (cmd_handler)cmd_traceswo, "Start trace capture, NRZ mode: (baudrate) (decode channel ...)" },
-#else
-	{"traceswo", (cmd_handler)cmd_traceswo, "Start trace capture, Manchester mode: (decode channel ...)" },
-#endif
 #endif
 	{"heapinfo", (cmd_handler)cmd_heapinfo, "Set semihosting heapinfo" },
 #if defined(PLATFORM_HAS_DEBUG) && (PC_HOSTED == 0)
@@ -136,15 +121,10 @@ bool cmd_version(target *t, int argc, char **argv)
 	(void)t;
 	(void)argc;
 	(void)argv;
-#if PC_HOSTED == 1
-	gdb_outf("Black Magic Probe, PC-Hosted for " PLATFORM_IDENT()
-			 ", Version " FIRMWARE_VERSION "\n");
-#else
-	gdb_outf("Black Magic Probe (Firmware " FIRMWARE_VERSION ") (Hardware Version %d)\n", platform_hwversion());
-#endif
+	gdb_out("Black Magic Probe (Firmware " FIRMWARE_VERSION " on " MICROPY_HW_BOARD_NAME ")\n");
 	gdb_out("Copyright (C) 2015  Black Sphere Technologies Ltd.\n");
 	gdb_out("License GPLv3+: GNU GPL version 3 or later "
-		"<http://gnu.org/licenses/gpl.html>\n\n");
+		"<http://gnu.org/licenses/gpl.html>\n");
 
 	return true;
 }
@@ -158,6 +138,7 @@ bool cmd_help(target *t, int argc, char **argv)
 	gdb_out("General commands:\n");
 	for(c = cmd_list; c->cmd; c++)
 		gdb_outf("\t%s -- %s\n", c->cmd, c->help);
+	gdb_outf("\tpython -- execute micropython command\n");
 
 	if (!t)
 		return -1;
@@ -172,9 +153,6 @@ static bool cmd_jtag_scan(target *t, int argc, char **argv)
 	(void)t;
 	uint8_t irlens[argc];
 
-	if (platform_target_voltage())
-		gdb_outf("Target voltage: %s\n", platform_target_voltage());
-
 	if (argc > 1) {
 		/* Accept a list of IR lengths on command line */
 		for (int i = 1; i < argc; i++)
@@ -188,11 +166,7 @@ static bool cmd_jtag_scan(target *t, int argc, char **argv)
 	int devs = -1;
 	volatile struct exception e;
 	TRY_CATCH (e, EXCEPTION_ALL) {
-#if PC_HOSTED == 1
-		devs = platform_jtag_scan(argc > 1 ? irlens : NULL);
-#else
 		devs = jtag_scan(argc > 1 ? irlens : NULL);
-#endif
 	}
 	switch (e.type) {
 	case EXCEPTION_TIMEOUT:
@@ -218,8 +192,6 @@ bool cmd_swdp_scan(target *t, int argc, char **argv)
 	(void)t;
 	(void)argc;
 	(void)argv;
-	if (platform_target_voltage())
-		gdb_outf("Target voltage: %s\n", platform_target_voltage());
 
 	if(connect_assert_srst)
 		platform_srst_set_val(true); /* will be deasserted after attach */
@@ -227,12 +199,8 @@ bool cmd_swdp_scan(target *t, int argc, char **argv)
 	int devs = -1;
 	volatile struct exception e;
 	TRY_CATCH (e, EXCEPTION_ALL) {
-#if PC_HOSTED == 1
-		devs = platform_adiv5_swdp_scan();
-#else
 		devs = adiv5_swdp_scan();
-#endif
-		}
+	}
 	switch (e.type) {
 	case EXCEPTION_TIMEOUT:
 		gdb_outf("Timeout during scan. Is target stuck in WFI?\n");
@@ -361,61 +329,6 @@ static bool cmd_target_power(target *t, int argc, const char **argv)
 	} else {
 		gdb_outf("Unrecognized command format\n");
 	}
-	return true;
-}
-#endif
-
-#ifdef PLATFORM_HAS_TRACESWO
-static bool cmd_traceswo(target *t, int argc, const char **argv)
-{
-	char serial_no[13];
-	(void)t;
-#if TRACESWO_PROTOCOL == 2
-	uint32_t baudrate = SWO_DEFAULT_BAUD;
-#endif
-	uint32_t swo_channelmask = 0; /* swo decoding off */
-	uint8_t decode_arg = 1;
-#if TRACESWO_PROTOCOL == 2
-	/* argument: optional baud rate for async mode */
-	if ((argc > 1) && (*argv[1] >= '0') && (*argv[1] <= '9')) {
-		baudrate = atoi(argv[1]);
-		if (baudrate == 0) baudrate = SWO_DEFAULT_BAUD;
-		decode_arg = 2;
-	}
-#endif
-	/* argument: 'decode' literal */
-	if((argc > decode_arg) &&  !strncmp(argv[decode_arg], "decode", strlen(argv[decode_arg]))) {
-		swo_channelmask = 0xFFFFFFFF; /* decoding all channels */
-		/* arguments: channels to decode */
-		if (argc > decode_arg + 1) {
-			swo_channelmask = 0x0;
-			for (int i = decode_arg+1; i < argc; i++) { /* create bitmask of channels to decode */
-				int channel = atoi(argv[i]);
-				if ((channel >= 0) && (channel <= 31))
-					swo_channelmask |= (uint32_t)0x1 << channel;
-			}
-		}
-	}
-#if defined(PLATFORM_HAS_DEBUG) && (PC_HOSTED == 0) && defined(ENABLE_DEBUG)
-	if (debug_bmp) {
-#if TRACESWO_PROTOCOL == 2
-		gdb_outf("baudrate: %lu ", baudrate);
-#endif
-		gdb_outf("channel mask: ");
-		for (int8_t i=31;i>=0;i--) {
-			uint8_t bit = (swo_channelmask >> i) & 0x1;
-			gdb_outf("%u", bit);
-		}
-		gdb_outf("\n");
-	}
-#endif
-#if TRACESWO_PROTOCOL == 2
-	traceswo_init(baudrate, swo_channelmask);
-#else
-	traceswo_init(swo_channelmask);
-#endif
-	serial_no_read(serial_no, sizeof(serial_no));
-	gdb_outf("%s:%02X:%02X\n", serial_no, 5, 0x85);
 	return true;
 }
 #endif

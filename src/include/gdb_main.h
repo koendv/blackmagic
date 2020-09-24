@@ -21,7 +21,19 @@
 #ifndef __GDB_MAIN_H
 #define __GDB_MAIN_H
 
-void gdb_main(void);
+/* process one gdb remote command */
+void gdb_main(char *pbuf, int size);
+
+/* global variable to tell bmp_loop() to poll target */
+extern bool gdb_target_running;
+/* called when user types ctrl-c */
+void gdb_halt_target(void);
+/* poll running target */
+void gdb_poll_target(void);
+/* access for mp target */
+extern target *cur_target;
+extern target *last_target;
+extern struct target_controller gdb_controller;
 
 #endif
 

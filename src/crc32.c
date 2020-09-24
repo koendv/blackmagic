@@ -19,12 +19,13 @@
  */
 
 #include "general.h"
-#include "target.h"
 
-#if !defined(STM32F0) && !defined(STM32F1) && !defined(STM32F2) && \
-	!defined(STM32F3) && !defined(STM32F4) && !defined(STM32F7) && \
-	!defined(STM32L0) && !defined(STM32L1) && !defined(STM32F4) && \
-	!defined(STM32G0) && !defined(STM32G4)
+#ifndef PLATFORM_HAS_HARDWARE_CRC
+
+#include "crc32.h"
+
+/* use software crc fallback */
+
 static const uint32_t crc32_table[] = {
 	0x00000000, 0x04C11DB7, 0x09823B6E, 0x0D4326D9,
 	0x130476DC, 0x17C56B6B, 0x1A864DB2, 0x1E475005,
@@ -92,7 +93,10 @@ static const uint32_t crc32_table[] = {
 	0xBCB4666D, 0xB8757BDA, 0xB5365D03, 0xB1F740B4,
 };
 
-static uint32_t crc32_calc(uint32_t crc, uint8_t data)
+void generic_crc32_init(void) {
+}
+
+static inline uint32_t crc32_calc(uint32_t crc, uint8_t data)
 {
 	return (crc << 8) ^ crc32_table[((crc >> 24) ^ data) & 255];
 }
@@ -114,40 +118,5 @@ uint32_t generic_crc32(target *t, uint32_t base, size_t len)
 	}
 	return crc;
 }
-#else
-#include <libopencm3/stm32/crc.h>
-uint32_t generic_crc32(target *t, uint32_t base, size_t len)
-{
-	uint8_t bytes[128];
-	uint32_t crc;
 
-	CRC_CR |= CRC_CR_RESET;
-
-	while (len > 3) {
-		size_t read_len = MIN(sizeof(bytes), len) & ~3;
-		target_mem_read(t, bytes, base, read_len);
-
-		for (unsigned i = 0; i < read_len; i += 4)
-			CRC_DR = __builtin_bswap32(*(uint32_t*)(bytes+i));
-
-		base += read_len;
-		len -= read_len;
-	}
-
-	crc = CRC_DR;
-
-	target_mem_read(t, bytes, base, len);
-	uint8_t *data = bytes;
-	while (len--) {
-		crc ^= *data++ << 24;
-		for (int i = 0; i < 8; i++) {
-			if (crc & 0x80000000)
-				crc = (crc << 1) ^ 0x4C11DB7;
-			else
-				crc <<= 1;
-		}
-	}
-	return crc;
-}
 #endif
-

@@ -92,7 +92,7 @@ static const char fresh_boot_py[] =
 #if MICROPY_HW_ENABLE_USB
   "\r\n"
   "if 0:\r\n"
-#if MICROPY_HW_USB_HS == 1
+#if MICROPY_HW_USB_HS && !MICROPY_HW_USB_HS_IN_FS
   "  pyb.usb_mode('VCP+HID', vid=0x1d50, pid=0x6018, hid=dap.hid_info, high_speed=True)\r\n"
 #else
   "  pyb.usb_mode('VCP+HID', vid=0x1d50, pid=0x6018, hid=dap.hid_info)\r\n"
@@ -102,7 +102,7 @@ static const char fresh_boot_py[] =
   "  print('dap')\r\n"
   "\r\n"
   "if 0:\r\n"
-#if MICROPY_HW_USB_HS == 1
+#if MICROPY_HW_USB_HS && !MICROPY_HW_USB_HS_IN_FS
   "  pyb.usb_mode('VCP+VCP', vid=0x1d50, pid=0x6018, high_speed=True)\r\n"
 #else
   "  pyb.usb_mode('VCP+VCP', vid=0x1d50, pid=0x6018)\r\n"

@@ -3,7 +3,6 @@
 
 #include "bmp_malloc.h"
 #include "timing.h"
-#include "mpconfigboard.h"
 #include <stdarg.h>
 
 #define DEBUG DEBUG_WARN

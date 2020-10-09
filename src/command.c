@@ -29,6 +29,7 @@
 #include "target.h"
 #include "morse.h"
 #include "version.h"
+#include "py/mpconfig.h"
 
 typedef bool (*cmd_handler)(target *t, int argc, const char **argv);
 

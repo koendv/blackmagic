@@ -243,6 +243,12 @@ static void raise_mp_exception(struct exception e) {
 
 /* access to bytes/bytearray contents and length */
 
+/*
+   o: micropython string, bytes or bytearray (input)
+   len: length of string, bytes or bytearray (output)
+   items: output, string, bytes or bytearray data (output)
+ */
+
 static void mp_obj_get_data(mp_obj_t o, size_t *len, mp_obj_t **items) {
   if (mp_obj_is_type(MP_OBJ_FROM_PTR(o), &mp_type_bytearray)) {
     mp_obj_array_t *barray = MP_OBJ_FROM_PTR(o);
